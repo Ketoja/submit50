@@ -1,0 +1,172 @@
+/**
+ * dictionary.c
+ *
+ * Computer Science 50
+ * Problem Set 5
+ *
+ * Implements a dictionary's functionality.
+ */
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include "dictionary.h"
+
+#define SIZE 143091
+
+
+//http://www.eternallyconfuzzled.com/tuts/algorithms/jsw_tut_hashing.aspx
+// я брала из этого сайта функцию Bernstein hash
+
+unsigned sax_hash(void *key, int len)
+{
+    unsigned char *p = key;
+    unsigned h = 0;
+    int i;
+
+    for (i = 0; i < len; i++)
+    {
+        h = 33 * h + p[i];
+    }
+
+    return h;
+}
+
+typedef struct node
+{
+    long val;
+    char node_word[LENGTH + 1];
+    struct node* next;
+}
+node;
+
+//определяю переменную, которая отслеживает количество слов в словаре hashmap
+int outof_hashmap = 0;
+int clear_tracker = 0;
+
+node hash_map[SIZE];
+
+/**
+ * Возвращает true, если слово в словаре иначе false.
+ */
+bool check(const char* word)
+{
+    // TODO
+    //переделывам все буквы в нижний регистр
+    char buffer[LENGTH + 1];
+    int je = 0;
+    while (true)
+    {
+        if (word[je] == '\0')
+        {
+            buffer[je] = '\0';
+            break;
+        }
+        else
+        {
+            buffer[je] = tolower(word[je]);
+            je++;
+        }
+    }
+    unsigned long bin_to_search = sax_hash(buffer, strlen(buffer)) ;
+
+    for(int yi = 0 ; yi < 143091 ; yi++)
+    {
+        if (hash_map[yi].val == bin_to_search && strcmp(buffer, hash_map[yi].node_word) == 0 )
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+
+/**
+ * Загружает словарь в память. Возвращает true, если выполнено иначе false.
+ */
+bool load(const char* dictionary)
+{
+    // открываем указатель на словарь
+    FILE* dict_ptr = fopen(dictionary, "r");
+
+    //пишу hashmap со всеми указателями на NULL
+    for(int i = 0 ; i < SIZE ; i++)
+    {
+        hash_map[i].next = NULL;
+    }
+
+    int index2 = 0;     //index2 подсчитывает буквы в слове
+    char dict_word[LENGTH + 1];     //буферное хранилище слова из словаря
+    int into_hashmap = 0;       //сообщает количество слов, которые прошли и готовы к добавлению в словарь для поиска.
+
+    //проходит слова по символам
+    for (int ltr = fgetc(dict_ptr); ltr != EOF; ltr = fgetc(dict_ptr))
+    {
+        // разрешаем только алфавитные символы и апострофы
+        if (isalpha(ltr) || (ltr == '\'' && index2 > 0))
+        {
+            // эта штука добавляет символ в слово
+            dict_word[index2] = ltr;
+            index2++;
+
+            // игнорируем слишком большие слова
+            if (index2 > LENGTH)
+            {
+                // считываем слово до конца
+                while ((ltr = fgetc(dict_ptr)) != EOF && isalpha(ltr));
+
+                // готовимся к новому слову
+                index2 = 0;
+            }
+        }
+
+        // мы должны найти целое слово
+        else if (index2 > 0)
+        {
+            dict_word[index2] = '\0';    //прекратить текущее слово
+            into_hashmap++;
+
+            //добавили слово в словарь hashmap
+
+            //скопировать dict_word в новый узел
+            strcpy(hash_map[into_hashmap - 1].node_word , dict_word);
+            hash_map[into_hashmap - 1].val= sax_hash(dict_word , strlen(dict_word));
+            index2 = 0;
+            outof_hashmap++;
+        }
+    }
+
+    fclose(dict_ptr);
+    //мы хотим убедится, что все слова успешно переданы
+    if (into_hashmap == outof_hashmap)
+        return true;
+    else
+        return false;
+}
+
+
+
+/**
+ * Возвращает количество слов в словаре, если они загружены
+else 0, если еще не нет.
+ */
+unsigned int size(void)
+{
+    if(outof_hashmap != 0)
+        return outof_hashmap;
+    else
+        return 0;
+}
+
+/**
+ * Удаляет словарь из памяти. Возвращает true, если удалил иначе false.
+ */
+bool unload(void)
+{
+    return true;
+}
+
+
+
